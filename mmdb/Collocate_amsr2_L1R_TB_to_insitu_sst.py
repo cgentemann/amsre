@@ -7,6 +7,7 @@
 # In[1]:
 
 #import os
+import sys
 import numpy as np
 #import matplotlib.pyplot as plt
 #import datetime as dt
@@ -162,7 +163,7 @@ def read_usv(iusv):
 
 
 #intialize grid
-for iusv in range(input_usv_start,input_usv_end):
+for iusv in range(input_iusv_start,input_iusv_end):
     area_def = load_area('areas.cfg', 'pc_world')
     rlon=np.arange(-180,180,.1)
     rlat=np.arange(90,-90,-.1)
@@ -215,12 +216,12 @@ for iusv in range(input_usv_start,input_usv_end):
         #print(sat_directory+syr+'/'+smon+'/'+'/GW1AM2_'+syr+smon+sdy+file_end)
         print(usv_day.data,'numfiles:',len(filelist))
         print(adir_list)
-        temp_file='c:/temp/tem_'+iusv+'.h5'
+        temp_file='c:/temp/tem_'+str(iusv)+'.h5'
         x,y,z = [],[],[]
         for file in filelist:
             file.replace('\\','/')
             with gzip.open(file, 'rb') as f_in:
-                with open(, 'wb') as f_out:
+                with open(temp_file, 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
             ds=xr.open_dataset(temp_file)
             ds.close()
