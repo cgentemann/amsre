@@ -13,6 +13,7 @@ from pyresample import image, geometry, load_area, save_quicklook, SwathDefiniti
 from pyresample.kd_tree import resample_nearest
 import gzip
 import shutil
+from scipy import spatial
 
 # # Define a function to read in insitu data
 # - Read in the Saildrone USV file either from a local disc or using OpenDAP.
@@ -37,7 +38,6 @@ import shutil
 input_iusv_start = int(input("Enter start cruise processing number 0-10: "))
 input_iusv_end = int(input("Enter stop cruise processing number 0-10: "))
 adir_usv = str(input("Enter directory for USV data: "))
-adir_l1r = str(input("Enter directory for L1R data: "))
 
 def read_usv(adir_usv,iusv):
     filename_usv_list = ['pmel_2015_sd126-ALL-1_min-v1.nc',
@@ -122,86 +122,66 @@ def read_usv(adir_usv,iusv):
         ds_usv['WAVE_SIGNIFICANT_HEIGHT']=xr.DataArray(np.ones(ilen)*np.nan,coords={'time':ds_usv.time},dims=('time'))
         ds_usv.WAVE_SIGNIFICANT_HEIGHT.attrs={'standard_name':'sea_surface_wave_significant_height','long_name':'Significant wave height','units':'m','installed_height':'0.34'}
 
-    return ds_usv,name_usv_list[iusv]
+    #add room to write collocated data information
+    ilen = ds_usv.time.shape[0]
+    ds_usv['insitu.dtime']=xr.DataArray(np.ones(ilen)*999999,coords={'time':ds_usv.time},dims=('time'))
+    ds_usv['amsr2_name']=xr.DataArray(np.empty(ilen,dtype=str),coords={'time':ds_usv.time},dims=('time'))
+    ds_usv['amsr2_dist']=xr.DataArray(np.ones(ilen)*999999,coords={'time':ds_usv.time},dims=('time'))
+    ds_usv['amsr2_scan']=xr.DataArray(np.ones(ilen)*999999,coords={'time':ds_usv.time},dims=('time'))
+    ds_usv['amsr2_cell']=xr.DataArray(np.ones(ilen)*999999,coords={'time':ds_usv.time},dims=('time'))
+    ds_usv['insitu.id']=xr.DataArray(np.empty(ilen,dtype=str),coords={'time':ds_usv.time},dims=('time'))
 
+    return ds_usv,name_usv_list[iusv]
 
 #intialize grid
 for iusv in range(input_iusv_start,input_iusv_end):
-    area_def = load_area('areas.cfg', 'pc_world')
-    rlon=np.arange(-180,180,.1)
-    rlat=np.arange(90,-90,-.1)
+    num_usv = 0
+    ds_usv, usv_name = read_usv(adir_usv,num_usv)
+    fileout = adir_usv + usv_name + 'AMSR2MMDB_usv2.nc'
+    ds_usv = xr.open_dataset(fileout)
+# now collocation with orbital data is finished.  re-open file and create the mean values for each matchup so there aren't repeates
 
-    ds_usv,name_usv = read_usv(adir_usv,iusv)
-
-#    adir = 'C:/Users\gentemann/Google Drive/public/temp/'
-   # adir = 'd:/'
-    if ds_usv.time.min().dt.year.data<2018:
-        sat_directory = adir_l1r + 'amsr2/L1r/v2/'
-        file_end = '*.h5.gz'
-    else:
-        sat_directory = adir_l1r + 'amsr2_update/ftp.gportal.jaxa.jp/standard/GCOM-W/GCOM-W.AMSR2/L1R/2/'
-        file_end = '*.h5'
-    fileout = adir_usv +name_usv+'AMSR2MMDB_filesave2.nc'
-
-#    if path.exists(fileout):
-#        continue
-    #init filelist
-    file_save=[]
-
-    #search usv data
-    minday,maxday = ds_usv.time[0],ds_usv.time[-1]
-    usv_day = minday
-    print(minday.data,maxday.data)
-    while usv_day<=maxday:
-        
-#while looping through USV data, look at data +-1 day
-        ds_day = ds_usv.sel(time=slice(usv_day-np.timedelta64(1,'D'),usv_day+np.timedelta64(1,'D')))
-        ilen = ds_day.time.size
-        if ilen<1:   #don't run on days without any data
+    fileout_norepeat = fileout[:-3]+'_norepeats.nc'
+    ds_usv = ds_usv.where(ds_usv.tb<10000,np.nan)
+    ilen,index = ds_usv.dims['time'],0
+    ds_tem = ds_usv.copy(deep=True)
+    dsst,dair,dwav,dpres,dsstu,dvwnd,duwnd,dsal,dchl,dgwnd,dlat,dlon, dut = [],[],[],[],[],[],[],[],[],[],[],[],np.empty((),dtype='datetime64')
+    index=0
+    while index <= ilen-2:
+        index += 1
+        if np.isnan(ds_usv.tb[index]):
             continue
-        minlon,maxlon,minlat,maxlat = ds_day.lon.min().data,ds_day.lon.max().data,ds_day.lat.min().data,ds_day.lat.max().data
-        #caluclate filelist
-        syr=str(usv_day.dt.year.data)
-        smon=str(usv_day.dt.month.data).zfill(2)
-        sdy=str(usv_day.dt.day.data).zfill(2)
-        #the more recent data is in daily directories, so easy to search
-        #the older data, pre 2018 is in monthly directories so only search files for day
-        if usv_day.dt.year.data<2018:
-            adir_list=sat_directory+syr+'/'+smon+'/'+sdy+'/'+file_end
-            filelist = glob(adir_list)
-        else:
-            adir_list=sat_directory+syr+'/'+smon+'/'+'/GW1AM2_'+syr+smon+sdy+file_end
-            filelist = glob(adir_list)  
-        #print(sat_directory+syr+'/'+smon+'/'+'/GW1AM2_'+syr+smon+sdy+file_end)
-        print(usv_day.data,'numfiles:',len(filelist))
-        print(adir_list)
-        temp_file='c:/temp/tem_'+str(iusv)+'.h5'
-        x,y,z = [],[],[]
-        for file in filelist:
-            file.replace('\\','/')
-            if ds_usv.time.min().dt.year.data < 2018:  #early files gzipped
-                with gzip.open(file, 'rb') as f_in:
-                    with open(temp_file, 'wb') as f_out:
-                        shutil.copyfileobj(f_in, f_out)
-                ds=xr.open_dataset(temp_file)
-            else:
-                ds=xr.open_dataset(file)
-            ds.close()
-            xlat=ds['Latitude of Observation Point for 89A'][:,::2]
-            xlon=ds['Longitude of Observation Point for 89A'][:,::2]
-            x = xlon.data
-            y = xlat.data
-            z = ds['Brightness Temperature (res06,6.9GHz,H)'].data*.01 
-            lons,lats,data = x,y,z 
-            swath_def = SwathDefinition(lons, lats)
-            result1 = resample_nearest(swath_def, data, area_def, radius_of_influence=20000, fill_value=None)
-            da = xr.DataArray(result1,name='tb6h',coords={'lat':rlat,'lon':rlon},dims=('lat','lon'))
-            subset = da.sel(lat = slice(maxlat,minlat),lon=slice(minlon,maxlon))
-            num_obs = np.isfinite(subset).sum()
-            if num_obs>0:
-                file_save = np.append(file_save,file)
-        usv_day += np.timedelta64(1,'D')
-        df = xr.DataArray(file_save,name='filenames')
-        df.to_netcdf(fileout)
-
-
+        if np.isnan(ds_usv.amsr2_scan[index]):
+            continue
+        result = np.where((ds_usv.amsr2_scan == ds_tem.amsr2_cell[index].data) & (ds_usv.amsr2_scan == ds_tem.amsr2_cell[index].data))
+        #duu=np.append(duu,ds_usv.smap_SSS[result[0][0]].data)
+        #duu2=np.append(duu2,ds_usv.smap_iqc_flag[result[0][0]].data)
+        dsst=np.append(duv1,ds_usv['insitu.sea_surface_temperature'][result].mean().data)
+        dair=np.append(duv1,ds_usv['insitu.air_temperature'][result].mean().data)
+        dwav=np.append(duv1,ds_usv['insitu.sig_wave_height'][result].mean().data)
+        dpres=np.append(duv1,ds_usv['insitu.baro_pres'][result].mean().data)
+        dsstu=np.append(duv1,ds_usv['insitu.sst_uncertainty'][result].mean().data)
+        dvwnd=np.append(duv1,ds_usv['insitu.vwnd'][result].mean().data)
+        duwnd=np.append(duv1,ds_usv['insitu.uwnd'][result].mean().data)
+        dsal=np.append(duv1,ds_usv['insitu.salinity'][result].mean().data)
+        dchl=np.append(duv1,ds_usv['insitu.chlor'][result].mean().data)
+        dgwnd=np.append(duv1,ds_usv['insitu.gust_wind'][result].mean().data)
+        dlat=np.append(dlat,ds_usv['insitu.lat'][result].mean().data)
+        dlon=np.append(dlon,ds_usv['insitu.lon'][result].mean().data)
+        dut=np.append(dut,ds_usv['insitu.time'][result].mean().data)
+        ds_usv.tb[result]=np.nan
+    dut2 = dut[1:]  #remove first data point which is a repeat from what array defined
+    ds_new=xr.Dataset(data_vars={'insitu.sea_surface_temperature': ('time',dsst),
+                                 'insitu.air_temperature': ('time',ddair),
+                                 'insitu.sig_wave_height':('time',dwav),
+                                 'insitu.baro_pres':('time',dpres),
+                                 'insitu.sst_uncertainty':('time',dsstu),
+                                 'insitu.vwnd':('time',dvwnd),
+                                 'insitu.uwnd':('time',duwnd),
+                                 'insitu.salinity': ('time', dsal),
+                                 'insitu.chlor': ('time', dchl),
+                                 'insitu.gust_wind': ('time', dgwnd),
+                                 'lon': ('time',dlon),
+                                 'lat': ('time',dlat)},
+                      coords={'time':dut2})
+    ds_new.to_netcdf(fileout_norepeat)
