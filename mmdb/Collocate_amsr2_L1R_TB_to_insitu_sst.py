@@ -2,62 +2,54 @@
 # coding: utf-8
 
 # # This is the in situ and SSS collocation code. 
-# 
+# # this is the part A of the program that searches for L1R files that have any data where cruise is
 
-# In[1]:
 
-#import os
 import sys
 import numpy as np
-#import matplotlib.pyplot as plt
-#import datetime as dt
-#import pandas as pd
 import xarray as xr
-#import scipy
 from glob import glob
-#import cartopy.crs as ccrs
-#from pyresample.geometry import AreaDefinition
 from pyresample import image, geometry, load_area, save_quicklook, SwathDefinition, area_def2basemap
 from pyresample.kd_tree import resample_nearest
-#from math import radians, cos, sin, asin, sqrt
-#from scipy import spatial
-#import os.path
-#from os import path
 import gzip
 import shutil
-
 
 # # Define a function to read in insitu data
 # - Read in the Saildrone USV file either from a local disc or using OpenDAP.
 # - add room to write collocated data to in situ dataset
-# 
+# input **********************************
 
-# In[5]:
-input_iusv_start=int(str(sys.argv[1]))
-input_iusv_end=int(str(sys.argv[2]))
+# ## First let's figure out what orbital files actually have data in our area of interest.  To do this, use the pyresample software
+#
+# - read in the in situ data
+# - calculate the in situ min/max dates to know what files to check
+#
+# Now we have our time of interest
+#
+# - loop through the satellite data
+# - calculate the in situ min/max lat/lon on the same day to define a small box of interest
+# - use pyresample to map the data onto a predefined 0.1 deg resolution spatial grid
+# - subset the gridded map to the area of interest
+# - see if there is any valid data in that area
+# - if there is any valid data, save the filename into a list
+#
+#
+input_iusv_start = int(input("Enter start cruise processing number 0-10: "))
+input_iusv_end = int(input("Enter stop cruise processing number 0-10: "))
+adir_usv = str(input("Enter directory for USV data: "))
+adir_l1r = str(input("Enter directory for L1R data: "))
 
-
-def read_usv(iusv):
-#    filename_usv_list = ['F:/data/cruise_data/saildrone/noaa_arctic/PMEL_2015/126/pmel_2015_sd126-ALL-1_min-v1.nc',
-#                         'F:/data/cruise_data/saildrone/noaa_arctic/PMEL_2015/128/pmel_2015_sd128-ALL-1_min-v1.nc',
-#                         'F:/data/cruise_data/saildrone/noaa_arctic/PMEL_2016/126/pmel_2016_sd126-ALL-1_min-v1.nc',
-#                         'F:/data/cruise_data/saildrone/noaa_arctic/PMEL_2016/128/pmel_2016_sd128-ALL-1_min-v1.nc',
-#                         'F:/data/cruise_data/saildrone/2019_arctic/daily_files/arctic_2019_sd1033-ALL-1_min-v1.nc',
-#                         'F:/data/cruise_data/saildrone/2019_arctic/daily_files/arctic_2019_sd1034-ALL-1_min-v1.nc',
-#                         'F:/data/cruise_data/saildrone/2019_arctic/daily_files/arctic_2019_sd1035-ALL-1_min-v1.nc',
-#                         'F:/data/cruise_data/saildrone/2019_arctic/daily_files/arctic_2019_sd1036-ALL-1_min-v1.nc',
-#                         'F:/data/cruise_data/saildrone/2019_arctic/daily_files/arctic_2019_sd1037-ALL-1_min-v1.nc',
-#                        'F:/data/cruise_data/saildrone/antarctic/saildrone-gen_5-antarctica_circumnavigation_2019-sd1020-20190119T040000-20190803T043000-1440_minutes-v1.1564857794963.nc']
-    filename_usv_list = ['C:/Users/gentemann/Google Drive/private/tem_saildrone/pmel_2015_sd126-ALL-1_min-v1.nc',
-                         'C:/Users/gentemann/Google Drive/private/tem_saildrone/pmel_2015_sd128-ALL-1_min-v1.nc',
-                         'C:/Users/gentemann/Google Drive/private/tem_saildrone/pmel_2016_sd126-ALL-1_min-v1.nc',
-                         'C:/Users/gentemann/Google Drive/private/tem_saildrone/pmel_2016_sd128-ALL-1_min-v1.nc',
-                         'C:/Users/gentemann/Google Drive/private/tem_saildrone/arctic_2019_sd1033-ALL-1_min-v1.nc',
-                         'C:/Users/gentemann/Google Drive/private/tem_saildrone/arctic_2019_sd1034-ALL-1_min-v1.nc',
-                         'C:/Users/gentemann/Google Drive/private/tem_saildrone/arctic_2019_sd1035-ALL-1_min-v1.nc',
-                         'C:/Users/gentemann/Google Drive/private/tem_saildrone/arctic_2019_sd1036-ALL-1_min-v1.nc',
-                         'C:/Users/gentemann/Google Drive/private/tem_saildrone/arctic_2019_sd1037-ALL-1_min-v1.nc',
-                         'C:/Users/gentemann/Google Drive/private/tem_saildrone/saildrone-gen_5-antarctica_circumnavigation_2019-sd1020-20190119T040000-20190803T043000-1440_minutes-v1.1564857794963.nc']
+def read_usv(adir_usv,iusv):
+    filename_usv_list = ['pmel_2015_sd126-ALL-1_min-v1.nc',
+                         'pmel_2015_sd128-ALL-1_min-v1.nc',
+                         'pmel_2016_sd126-ALL-1_min-v1.nc',
+                         'pmel_2016_sd128-ALL-1_min-v1.nc',
+                         'arctic_2019_sd1033-ALL-1_min-v1.nc',
+                         'arctic_2019_sd1034-ALL-1_min-v1.nc',
+                         'arctic_2019_sd1035-ALL-1_min-v1.nc',
+                         'arctic_2019_sd1036-ALL-1_min-v1.nc',
+                         'arctic_2019_sd1037-ALL-1_min-v1.nc',
+                         'saildrone-gen_5-antarctica_circumnavigation_2019-sd1020-20190119T040000-20190803T043000-1440_minutes-v1.1564857794963.nc']
     name_usv_list = ['arctic2015_126',
                      'arctic2015_128',
                      'arctic2016_126',
@@ -69,10 +61,8 @@ def read_usv(iusv):
                      'arctic2019_1037',
                     'antarctic2019']
 
-    filename_usv = filename_usv_list[iusv]
-#    if iusv==3:
-#    elif iusv<3:
-#    elif (iusv>3) & (iusv<8):
+    filename_usv = adir_usv + filename_usv_list[iusv]
+    print('FILEIN:',filename_usv)
     ds_usv = xr.open_dataset(filename_usv)
     ds_usv.close()
 #NEED TO FIND OUT IF wind_speed is to/from wind_direction ?
@@ -115,7 +105,7 @@ def read_usv(iusv):
     if iusv==5:  #1034
         ds_usv = ds_usv.rename({'TEMP_CTD_RBR_MEAN':'TEMP_CTD_MEAN','TEMP_O2_RBR_MEAN':'TEMP_O2_MEAN','SAL_RBR_MEAN':'SAL_MEAN','CHLOR_WETLABS_MEAN':'CHLOR_MEAN'})
     if iusv==6:  #1035
-        ds_usv = ds_usv.rename({'TEMP_CTD_RBR_MEAN':'TEMP_CTD_MEAN','TEMP_O2_RBR_MEAN':'TEMP_O2_MEAN','SAL_RBR_MEAN':'SAL_MEAN','CHLOR_WETLABS_MEAN':'CHLOR_MEAN'})
+        ds_usv = ds_usv.rename({'TEMP_CTD_RBR_MEAN':'TEMP_CTD_MEAN','TEMP_O2_RBR_MEAN':'TEMP_O2_MEAN','SAL_RBR_MEAN':'SAL_MEAN','CHLOR_WETLABS_MEAN':'CHLOR_MEAN','WIND_MEASUREMENT_MEAN_HEIGHT':'WIND_MEAN_HEIGHT'})
     if iusv==7:  #1036
         ds_usv = ds_usv.isel(time=slice(100,-1))                                                                   #        ds_usv = ds_usv.rename({'TEMP_CTD_RBR_MEAN':'TEMP_CTD_MEAN','TEMP_O2_RBR_MEAN':'TEMP_O2_MEAN','SAL_RBR_MEAN':'SAL_MEAN','CHLOR_WETLABS_MEAN':'CHLOR_MEAN'})
         ds_usv = ds_usv.rename({'TEMP_CTD_RBR_MEAN':'TEMP_CTD_MEAN','TEMP_O2_RBR_MEAN':'TEMP_O2_MEAN','SAL_RBR_MEAN':'SAL_MEAN','CHLOR_WETLABS_MEAN':'CHLOR_MEAN'})
@@ -139,27 +129,15 @@ def read_usv(iusv):
     ds_usv['amsr2_dist']=xr.DataArray(np.ones(ilen)*999999,coords={'time':ds_usv.time},dims=('time'))
     ds_usv['amsr2_ydim']=xr.DataArray(np.ones(ilen)*999999,coords={'time':ds_usv.time},dims=('time'))
     ds_usv['amsr2_xdim']=xr.DataArray(np.ones(ilen)*999999,coords={'time':ds_usv.time},dims=('time'))
+    ds_usv['insitu.id']=xr.DataArray(np.empty(ilen,dtype=str),coords={'time':ds_usv.time},dims=('time'))
+
+ #   ds_usv = ds_usv.rename({'TEMP_CTD_MEAN':'insitu.sea_surface_temperature','TEMP_CTD_STDDEV':'insitu.sst_uncertainty',
+ #                 'TEMP_AIR_MEAN':'insitu.air_temperature','VWND_MEAN':'insitu.vwnd','UWND_MEAN':'insitu.uwnd',
+ #                 'WAVE_SIGNIFICANT_HEIGHT':'insitu.sig_wave_height','SAL_MEAN':'insitu.salinity','CHLOR_MEAN':'insitu.chlor',
+ #                 'BARO_PRES_MEAN':'insitu.baro_pres','RH_MEAN':'insitu.rel_humidity','GUST_WND_MEAN':'insitu.gust_wind',
+ #                   'lat':'insitu.lat','lon':'insitu.lon','time':'insitu.time'})
 
     return ds_usv,name_usv_list[iusv]
-
-
-# ## First let's figure out what orbital files actually have data in our area of interest.  To do this, use the pyresample software
-# 
-# - read in the in situ data
-# - calculate the in situ min/max dates to know what files to check
-# 
-# Now we have our time of interest
-# 
-# - loop through the satellite data
-# - calculate the in situ min/max lat/lon on the same day to define a small box of interest
-# - use pyresample to map the data onto a predefined 0.1 deg resolution spatial grid
-# - subset the gridded map to the area of interest
-# - see if there is any valid data in that area
-# - if there is any valid data, save the filename into a list
-# 
-# 
-
-# In[37]:
 
 
 #intialize grid
@@ -168,17 +146,18 @@ for iusv in range(input_iusv_start,input_iusv_end):
     rlon=np.arange(-180,180,.1)
     rlat=np.arange(90,-90,-.1)
 
-    ds_usv,name_usv = read_usv(iusv)
+    ds_usv,name_usv = read_usv(adir_usv,iusv)
 
 #    adir = 'C:/Users\gentemann/Google Drive/public/temp/'
-    adir = 'd:/'
+   # adir = 'd:/'
     if ds_usv.time.min().dt.year.data<2018:
-        sat_directory=adir+'amsr2/L1r/v2/'
+        sat_directory = adir_l1r + 'amsr2/L1r/v2/'
+        file_end = '*.h5.gz'
     else:
-        sat_directory=adir+'amsr2_update/ftp.gportal.jaxa.jp/standard/GCOM-W/GCOM-W.AMSR2/L1R/2/'
-    fileout = 'C:/Users\gentemann/Google Drive/private/tem_saildrone/'+name_usv+'AMSR2MMDB_filesave2.nc'
-    file_end = '*.h5.gz'
-    
+        sat_directory = adir_l1r + 'amsr2_update/ftp.gportal.jaxa.jp/standard/GCOM-W/GCOM-W.AMSR2/L1R/2/'
+        file_end = '*.h5'
+    fileout = adir_usv +name_usv+'AMSR2MMDB_filesave2.nc'
+
 #    if path.exists(fileout):
 #        continue
     #init filelist
@@ -190,12 +169,7 @@ for iusv in range(input_iusv_start,input_iusv_end):
     print(minday.data,maxday.data)
     while usv_day<=maxday:
         
-#        check_day = np.datetime64(str(usv_day.dt.year.data)+'-'+str(usv_day.dt.month.data).zfill(2)+'-'+str(usv_day.dt.day.data).zfill(2))
-#        usv_day1 = usv_day + np.timedelta64(1,'D')
-#        check_day1 = np.datetime64(str(usv_day1.dt.year.data)+'-'+str(usv_day1.dt.month.data).zfill(2)+'-'+str(usv_day1.dt.day.data).zfill(2))
-#        ds_day = ds_usv.sel(time=slice(check_day,check_day1))
-
-#while looping through USV data, look at data +-1 day 
+#while looping through USV data, look at data +-1 day
         ds_day = ds_usv.sel(time=slice(usv_day-np.timedelta64(1,'D'),usv_day+np.timedelta64(1,'D')))
         ilen = ds_day.time.size
         if ilen<1:   #don't run on days without any data
@@ -220,10 +194,13 @@ for iusv in range(input_iusv_start,input_iusv_end):
         x,y,z = [],[],[]
         for file in filelist:
             file.replace('\\','/')
-            with gzip.open(file, 'rb') as f_in:
-                with open(temp_file, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-            ds=xr.open_dataset(temp_file)
+            if ds_usv.time.min().dt.year.data < 2018:  #early files gzipped
+                with gzip.open(file, 'rb') as f_in:
+                    with open(temp_file, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                ds=xr.open_dataset(temp_file)
+            else:
+                ds=xr.open_dataset(file)
             ds.close()
             xlat=ds['Latitude of Observation Point for 89A'][:,::2]
             xlon=ds['Longitude of Observation Point for 89A'][:,::2]
