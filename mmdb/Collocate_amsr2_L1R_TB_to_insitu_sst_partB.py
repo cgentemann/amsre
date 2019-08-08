@@ -82,7 +82,8 @@ def read_usv(adir_usv,iusv):
         ds_usv['VWND_MEAN']=vwnd
         ds_usv.VWND_MEAN.attrs={'standard_name':'northward_wind','long_name':'Northward wind speed','units':'m s-1','installed_height':'5.2'}
         ilen = ds_usv.time.shape[0]
-        ds_usv['WWND_MEAN']=xr.DataArray(np.ones(ilen)*np.nan,coords={'time':ds_usv.time},dims=('time'))
+        ds_usv['WWND_MEAN'] = xr.DataArray(np.ones(ilen) * np.nan, coords={'time': ds_usv.time}, dims=('time'))
+        ds_usv['TEMP_CTD_STDDEV'] = xr.DataArray(np.ones(ilen) * np.nan, coords={'time': ds_usv.time}, dims=('time'))
         ds_usv.WWND_MEAN.attrs={'standard_name':'upward_wind_velocity','long_name':'upward wind speed','units':'m s-1','installed_height':'5.2'}
     if (iusv==2 or iusv==3):  #1033
         ds_usv = ds_usv.rename({'temp_air_mean':'TEMP_AIR_MEAN','rh_mean':'RH_MEAN','baro_pres_mean':'BARO_PRES_MEAN',
@@ -135,8 +136,7 @@ def read_usv(adir_usv,iusv):
     return ds_usv,name_usv_list[iusv]
 
 #intialize grid
-for iusv in range(input_iusv_start,input_iusv_end):
-    num_usv = 0
+for num_usv in range(input_iusv_start,input_iusv_end):
     ds_usv, usv_name = read_usv(adir_usv,num_usv)
     filelist = adir_usv + usv_name + 'AMSR2MMDB_filesave2.nc'
     fileout = adir_usv + usv_name + 'AMSR2MMDB_usv2.nc'
@@ -149,7 +149,7 @@ for iusv in range(input_iusv_start,input_iusv_end):
         file = adir_l1r + file[ipos:]
         print(file[ipos + 1:])
         print('opening:',file)
-        temp_file = 'c:/temp/tem_' + str(iusv) + '.h5'
+        temp_file = 'c:/temp/tem_' + str(num_usv) + '.h5'
         if ds_usv.time.min().dt.year.data < 2018:  # early files gzipped
             with gzip.open(file, 'rb') as f_in:
                 with open(temp_file, 'wb') as f_out:
