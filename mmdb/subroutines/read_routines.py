@@ -6,23 +6,17 @@ import numpy as np
 
 def read_usv(adir_usv,iusv):
     filename_usv_list = ['pmel_2015_sd126-ALL-1_min-v1.nc',
-                         'arctic_2019_sd1033-ALL-1_min-v1.nc',
                          'pmel_2015_sd128-ALL-1_min-v1.nc',
                          'pmel_2016_sd126-ALL-1_min-v1.nc',
                          'pmel_2016_sd128-ALL-1_min-v1.nc',
+                         'arctic_2019_sd1033-ALL-1_min-v1.nc',
                          'arctic_2019_sd1034-ALL-1_min-v1.nc',
                          'arctic_2019_sd1035-ALL-1_min-v1.nc',
                          'arctic_2019_sd1036-ALL-1_min-v1.nc',
                          'arctic_2019_sd1037-ALL-1_min-v1.nc',
                          'saildrone-gen_5-antarctica_circumnavigation_2019-sd1020-20190119T040000-20190803T043000-1440_minutes-v1.1564857794963.nc']
-    name_usv_list = ['pmel_2015_sd126','arctic2019_1033',
-                     'pmel_2015_sd128',
-                     'pmel_2016_sd126',
-                     'pmel_2016_sd128',
-                     'arctic2019_1034',
-                     'arctic2019_1035',
-                     'arctic2019_1036',
-                     'arctic2019_1037',
+    name_usv_list = ['pmel_2015_sd126','pmel_2015_sd128','pmel_2016_sd126','pmel_2016_sd128',
+                     'arctic2019_1033','arctic2019_1034','arctic2019_1035','arctic2019_1036','arctic2019_1037',
                      'antarctic2019']
 
     filename_usv = adir_usv + filename_usv_list[iusv]
