@@ -117,8 +117,9 @@ for iusv in range(input_iusv_start,input_iusv_end):
             num_obs = np.isfinite(subset).sum()
             if num_obs>0:
                 file_save = np.append(file_save,file)
+
         usv_day += np.timedelta64(1,'D')
-        df = xr.DataArray(file_save,name='filenames')
-        df.to_netcdf(fileout)
+    df = xr.DataArray(file_save,name='filenames')
+    df.to_netcdf(fileout)
 
 
