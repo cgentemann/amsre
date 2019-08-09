@@ -45,11 +45,11 @@ adir_usv = str(input("Enter directory for USV data: "))
 for iusv in range(input_iusv_start,input_iusv_end):
     num_usv = 0
     ds_usv, usv_name = read_usv(adir_usv,num_usv)
-    fileout = adir_usv + usv_name + 'AMSR2MMDB_usv2.nc'
+    fileout = adir_usv + usv_name + 'AMSR2MMDB_usv2_testing.nc'
     ds_usv = xr.open_dataset(fileout)
 # now collocation with orbital data is finished.  re-open file and create the mean values for each matchup so there aren't repeates
 
-    fileout_norepeat = fileout[:-3]+'_norepeats.nc'
+    fileout_norepeat = fileout[:-3]+'_norepeats_testing.nc'
     ds_usv = ds_usv.where(ds_usv.tb<10000,np.nan)
     ilen,index = ds_usv.dims['time'],0
     ds_tem = ds_usv.copy(deep=True)

@@ -15,7 +15,7 @@ import gzip
 import shutil
 from scipy import spatial
 sys.path.append('./subroutines/')
-from read_routines import read_usv
+from read_routines import read_usv,get_orbital_data_amsr2
 
 # # Define a function to read in insitu data
 # - Read in the Saildrone USV file either from a local disc or using OpenDAP.
@@ -45,39 +45,21 @@ adir_l1r = str(input("Enter directory for L1R data: "))
 #intialize grid
 for num_usv in range(input_iusv_start,input_iusv_end):
     ds_usv, usv_name = read_usv(adir_usv,num_usv)
-    filelist = adir_usv + usv_name + 'AMSR2MMDB_filesave2.nc'
-    fileout = adir_usv + usv_name + 'AMSR2MMDB_usv2.nc'
+    filelist = adir_usv + usv_name + 'AMSR2MMDB_filesave2_testing.nc'
+    fileout = adir_usv + usv_name + 'AMSR2MMDB_usv2_testing.nc'
     df = xr.open_dataset(filelist)
     for file2 in df.filenames.data:
-        file = file2
-        file.replace('\\', '/')
-#replace drive
-        ipos = file.find('amsr2')
-        file = adir_l1r + file[ipos:]
-        print(file[ipos + 1:])
-        print('opening:',file)
-        temp_file = 'c:/temp/tem_' + str(num_usv) + '.h5'
-        if ds_usv.time.min().dt.year.data < 2018:  # early files gzipped
-            with gzip.open(file, 'rb') as f_in:
-                with open(temp_file, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-            ds_l1r = xr.open_dataset(temp_file)
-        else:
-            ds_l1r = xr.open_dataset(file)
-        ds_l1r.close()
-        xlat = ds_l1r['Latitude of Observation Point for 89A'][:,::2]
-        xlon = ds_l1r['Longitude of Observation Point for 89A'][:,::2]
-        tb = ds_l1r['Brightness Temperature (res06,10.7GHz,H)']
-        ph0 = ds_l1r['Brightness Temperature (res06,10.7GHz,H)'].phony_dim_0
-        ph1 = ds_l1r['Brightness Temperature (res06,10.7GHz,H)'].phony_dim_1
-        tem_time = np.datetime64('1993-01-01') + (ds_l1r['Scan Time'].data * 1000).astype('timedelta64[ms]')
+        print(file2)
+        xlat, xlon, sat_time, var_data = get_orbital_data_amsr2(num_usv, file2)
+        ph0 = var_data.phony_dim_0
+        ph1 = var_data.phony_dim_1
+        tem_time = sat_time
         ds = xr.Dataset({'time': (['phony_dim_0'], tem_time),
-                         'tb': (['phony_dim_0', 'phony_dim_1'], tb),
+                         'tb': (['phony_dim_0', 'phony_dim_1'], var_data.data),
                          'lat': (['phony_dim_0', 'phony_dim_1'], xlat.data),
                          'lon': (['phony_dim_0', 'phony_dim_1'], xlon.data)},
                          coords={'phony_dim_0': (['phony_dim_0'], ph0),
                                  'phony_dim_1': (['phony_dim_1'], ph1)})
-
         ds2 = ds.stack(z=('phony_dim_0', 'phony_dim_1')).reset_index('z')
         # drop nan
         ds_drop = ds2.where(np.isfinite(ds2.lon), drop=True)
