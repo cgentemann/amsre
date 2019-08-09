@@ -72,11 +72,11 @@ for iusv in range(input_iusv_start,input_iusv_end):
         print(usv_day.data,'numfiles:',len(filelist))
         x,y,z = [],[],[]
         for file in filelist:
-            xlat,xlon,var_data=get_orbital_data_amsr2(iusv,file)
+            xlat,xlon,sat_time,var_data=get_orbital_data_amsr2(iusv,file)
             x = xlon.data
             y = xlat.data
             z = var_data.data
-            lons,lats,sat_time,data = x,y,z
+            lons,lats,data = x,y,z
             swath_def = SwathDefinition(lons, lats)
             result1 = resample_nearest(swath_def, data, area_def, radius_of_influence=20000, fill_value=None)
             da = xr.DataArray(result1,name='sat_data',coords={'lat':rlat,'lon':rlon},dims=('lat','lon'))

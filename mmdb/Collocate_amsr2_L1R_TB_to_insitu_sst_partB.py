@@ -46,23 +46,36 @@ adir_l1r = str(input("Enter directory for L1R data: "))
 for num_usv in range(input_iusv_start,input_iusv_end):
     ds_usv, usv_name = read_usv(adir_usv,num_usv)
     filelist = adir_usv + usv_name + 'AMSR2MMDB_filesave2_testing.nc'
+    print(filelist)
     fileout = adir_usv + usv_name + 'AMSR2MMDB_usv2_testing.nc'
     df = xr.open_dataset(filelist)
     for file2 in df.filenames.data:
         print(file2)
         xlat, xlon, sat_time, var_data = get_orbital_data_amsr2(num_usv, file2)
+
+        # drop points outside of box
+        usv_min_lon, usv_max_lon = ds_usv.lon.min().data - .5, ds_usv.lon.max().data + .5
+        usv_min_lat, usv_max_lat = ds_usv.lat.min().data - .5, ds_usv.lat.max().data + .5
+        cond = (xlon >= usv_min_lon) & (xlon <= usv_max_lon)
+        sub_lon = xlon.where(cond)
+        cond = (xlat >= usv_min_lat) & (xlat <= usv_max_lat)
+        sub_lat = xlat.where(cond)
+
         ph0 = var_data.phony_dim_0
         ph1 = var_data.phony_dim_1
         tem_time = sat_time
         ds = xr.Dataset({'time': (['phony_dim_0'], tem_time),
                          'tb': (['phony_dim_0', 'phony_dim_1'], var_data.data),
-                         'lat': (['phony_dim_0', 'phony_dim_1'], xlat.data),
-                         'lon': (['phony_dim_0', 'phony_dim_1'], xlon.data)},
+                         'lat': (['phony_dim_0', 'phony_dim_1'], sub_lat.data),
+                         'lon': (['phony_dim_0', 'phony_dim_1'], sub_lon.data)},
                          coords={'phony_dim_0': (['phony_dim_0'], ph0),
                                  'phony_dim_1': (['phony_dim_1'], ph1)})
         ds2 = ds.stack(z=('phony_dim_0', 'phony_dim_1')).reset_index('z')
         # drop nan
-        ds_drop = ds2.where(np.isfinite(ds2.lon), drop=True)
+#        ds_drop = ds2.where(np.isfinite(ds2.lon), drop=True)
+        ds_dropa = ds2.where(np.isfinite(ds2.lon), drop=True)
+        ds_drop = ds_dropa.where(np.isfinite(ds_dropa.lat), drop=True)
+
         lats = ds_drop.lat.data
         lons = ds_drop.lon.data
         inputdata = list(zip(lons.ravel(), lats.ravel()))
