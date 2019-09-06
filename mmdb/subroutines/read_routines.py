@@ -137,7 +137,8 @@ def get_filelist_amsr2_l1r(adir_l1r, day_in):
         adir_list = sat_directory + syr + '/' + smon + '/' + sdy + '/' + file_end
         filelist = glob(adir_list)
     else:
-        sat_directory = adir_l1r + 'amsr2_update/ftp.gportal.jaxa.jp/standard/GCOM-W/GCOM-W.AMSR2/L1R/2/'
+#        sat_directory = adir_l1r + 'amsr2_update/ftp.gportal.jaxa.jp/standard/GCOM-W/GCOM-W.AMSR2/L1R/2/'
+        sat_directory = adir_l1r + 'AMSR2/L1R/'
         file_end = '*.h5'
         adir_list = sat_directory + syr + '/' + smon + '/' + '/GW1AM2_' + syr + smon + sdy + file_end
         filelist = glob(adir_list)

@@ -43,8 +43,8 @@ adir_usv = str(input("Enter directory for USV data: "))
 
 #intialize grid
 for iusv in range(input_iusv_start,input_iusv_end):
-    num_usv = 0
-    ds_usv, usv_name = read_usv(adir_usv,num_usv)
+    ds_usv, usv_name = read_usv(adir_usv,iusv)
+    print('usv', usv_name)
     fileout = adir_usv + usv_name + 'AMSR2MMDB_usv2_testing.nc'
     ds_usv = xr.open_dataset(fileout)
 # now collocation with orbital data is finished.  re-open file and create the mean values for each matchup so there aren't repeates
