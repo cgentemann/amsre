@@ -50,34 +50,35 @@ for iusv in range(input_iusv_start,input_iusv_end):
 # now collocation with orbital data is finished.  re-open file and create the mean values for each matchup so there aren't repeates
 
     fileout_norepeat = fileout[:-3]+'_norepeats_testing.nc'
-    ds_usv = ds_usv.where(ds_usv.tb<10000,np.nan)
-    ilen,index = ds_usv.dims['time'],0
+ #   ds_usv = ds_usv.where(ds_usv.tb<10000,np.nan)
+    ds_usv = ds_usv.where(ds_usv.amsr2_scan>0,np.nan)
+    ilen,index = ds_usv['insitu.time'].size,0
     ds_tem = ds_usv.copy(deep=True)
-    dsst,dair,dwav,dpres,dsstu,dvwnd,duwnd,dsal,dchl,dgwnd,dlat,dlon, dut = [],[],[],[],[],[],[],[],[],[],[],[],np.empty((),dtype='datetime64')
+    dsst,dair,dwav,dpres,dsstu,dvwnd,duwnd,dsal,dchl,dgwnd,dlat,dlon,dut = [],[],[],[],[],[],[],[],[],[],[],[],np.empty((),dtype='datetime64')
     index=0
     while index <= ilen-2:
         index += 1
-        if np.isnan(ds_usv.tb[index]):
-            continue
+#        if np.isnan(ds_usv.tb[index]):
+#            continue
         if np.isnan(ds_usv.amsr2_scan[index]):
             continue
         result = np.where((ds_usv.amsr2_scan == ds_tem.amsr2_cell[index].data) & (ds_usv.amsr2_scan == ds_tem.amsr2_cell[index].data))
         #duu=np.append(duu,ds_usv.smap_SSS[result[0][0]].data)
         #duu2=np.append(duu2,ds_usv.smap_iqc_flag[result[0][0]].data)
-        dsst=np.append(duv1,ds_usv['insitu.sea_surface_temperature'][result].mean().data)
-        dair=np.append(duv1,ds_usv['insitu.air_temperature'][result].mean().data)
-        dwav=np.append(duv1,ds_usv['insitu.sig_wave_height'][result].mean().data)
-        dpres=np.append(duv1,ds_usv['insitu.baro_pres'][result].mean().data)
-        dsstu=np.append(duv1,ds_usv['insitu.sst_uncertainty'][result].mean().data)
-        dvwnd=np.append(duv1,ds_usv['insitu.vwnd'][result].mean().data)
-        duwnd=np.append(duv1,ds_usv['insitu.uwnd'][result].mean().data)
-        dsal=np.append(duv1,ds_usv['insitu.salinity'][result].mean().data)
-        dchl=np.append(duv1,ds_usv['insitu.chlor'][result].mean().data)
-        dgwnd=np.append(duv1,ds_usv['insitu.gust_wind'][result].mean().data)
+        dsst=np.append(dsst,ds_usv['insitu.sea_surface_temperature'][result].mean().data)
+        dair=np.append(dair,ds_usv['insitu.air_temperature'][result].mean().data)
+        dwav=np.append(dwav,ds_usv['insitu.sig_wave_height'][result].mean().data)
+        dpres=np.append(dpres,ds_usv['insitu.baro_pres'][result].mean().data)
+        dsstu=np.append(dsstu,ds_usv['insitu.sst_uncertainty'][result].mean().data)
+        dvwnd=np.append(dvwnd,ds_usv['insitu.vwnd'][result].mean().data)
+        duwnd=np.append(duwnd,ds_usv['insitu.uwnd'][result].mean().data)
+        dsal=np.append(dsal,ds_usv['insitu.salinity'][result].mean().data)
+        dchl=np.append(dchl,ds_usv['insitu.chlor'][result].mean().data)
+        dgwnd=np.append(dgwnd,ds_usv['insitu.gust_wind'][result].mean().data)
         dlat=np.append(dlat,ds_usv['insitu.lat'][result].mean().data)
         dlon=np.append(dlon,ds_usv['insitu.lon'][result].mean().data)
         dut=np.append(dut,ds_usv['insitu.time'][result].mean().data)
-        ds_usv.tb[result]=np.nan
+        #ds_usv.tb[result]=np.nan
     dut2 = dut[1:]  #remove first data point which is a repeat from what array defined
     ds_new=xr.Dataset(data_vars={'insitu.sea_surface_temperature': ('time',dsst),
                                  'insitu.air_temperature': ('time',ddair),
