@@ -51,7 +51,7 @@ for iusv in range(input_iusv_start,input_iusv_end):
 
     fileout_norepeat = fileout[:-3]+'_norepeats_testing.nc'
  #   ds_usv = ds_usv.where(ds_usv.tb<10000,np.nan)
-    ds_usv = ds_usv.where(ds_usv.amsr2_scan>0,np.nan)
+    ds_usv = ds_usv.where(ds_usv.amsr2_scan>10000,np.nan)  #keep valid scan nmbers, replace rest with nan
     ilen,index = ds_usv['insitu.time'].size,0
     ds_tem = ds_usv.copy(deep=True)
     dsst,dair,dwav,dpres,dsstu,dvwnd,duwnd,dsal,dchl,dgwnd,dlat,dlon,dut = [],[],[],[],[],[],[],[],[],[],[],[],np.empty((),dtype='datetime64')
@@ -81,7 +81,7 @@ for iusv in range(input_iusv_start,input_iusv_end):
         #ds_usv.tb[result]=np.nan
     dut2 = dut[1:]  #remove first data point which is a repeat from what array defined
     ds_new=xr.Dataset(data_vars={'insitu.sea_surface_temperature': ('time',dsst),
-                                 'insitu.air_temperature': ('time',ddair),
+                                 'insitu.air_temperature': ('time',dair),
                                  'insitu.sig_wave_height':('time',dwav),
                                  'insitu.baro_pres':('time',dpres),
                                  'insitu.sst_uncertainty':('time',dsstu),
