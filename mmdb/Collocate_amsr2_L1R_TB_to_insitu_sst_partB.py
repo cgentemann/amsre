@@ -45,9 +45,9 @@ adir_l1r = str(input("Enter directory for L1R data: "))
 #intialize grid
 for num_usv in range(input_iusv_start,input_iusv_end):
     ds_usv, usv_name = read_usv(adir_usv,num_usv)
-    filelist = adir_usv + usv_name + 'AMSR2MMDB_filesave2_testing.nc'
+    filelist = adir_usv  +  usv_name + 'AMSR2MMDB_filesave2_testing.nc'
     print(filelist)
-    fileout = adir_usv + usv_name + 'AMSR2MMDB_usv2_testing.nc'
+    fileout = adir_usv + 'mmdb_collocation_test/' + usv_name + 'AMSR2MMDB_usv2_testing.nc'
     df = xr.open_dataset(filelist)
     for file2 in df.filenames.data:
         print(file2)
