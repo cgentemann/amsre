@@ -109,7 +109,7 @@ def read_usv(adir_usv, iusv):
     # add room to write collocated data information
     ilen = ds_usv.time.shape[0]
     ds_usv['insitu.dtime'] = xr.DataArray(np.ones(ilen) * 999999, coords={'time': ds_usv.time}, dims=('time'))
-    ds_usv['amsr2_name'] = xr.DataArray(np.empty(ilen, dtype=str), coords={'time': ds_usv.time}, dims=('time'))
+    ds_usv['amsr2_name'] = xr.DataArray(np.empty(ilen, dtype='U125'), coords={'time': ds_usv.time}, dims=('time'))
     ds_usv['amsr2_dist'] = xr.DataArray(np.ones(ilen) * 999999, coords={'time': ds_usv.time}, dims=('time'))
     ds_usv['amsr2_scan'] = xr.DataArray(np.ones(ilen) * 999999, coords={'time': ds_usv.time}, dims=('time'))
     ds_usv['amsr2_cell'] = xr.DataArray(np.ones(ilen) * 999999, coords={'time': ds_usv.time}, dims=('time'))
